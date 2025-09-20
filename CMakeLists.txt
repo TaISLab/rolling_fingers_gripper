@@ -24,3 +24,33 @@ if(BUILD_TESTING)
 endif()
 
 ament_package()
+
+
+# 
+add_executable(rolling_3_fingers src/rolling_3_fingers.cpp)
+add_dependencies(rolling_3_fingers ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(rolling_3_fingers
+  dynamixel_ros_library
+  ${catkin_LIBRARIES}
+)
+
+add_executable(fsm_3_fingers src/fsm_3_fingers.cpp)
+add_dependencies(fsm_3_fingers ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(fsm_3_fingers
+  dynamixel_ros_library
+  ${catkin_LIBRARIES}
+)
+
+add_executable(rolling_4_fingers src/rolling_4_fingers.cpp)
+add_dependencies(rolling_4_fingers ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(rolling_4_fingers
+  dynamixel_ros_library
+  ${catkin_LIBRARIES}
+)
+
+add_executable(fsm_4_fingers src/fsm_4_fingers.cpp)
+add_dependencies(fsm_4_fingers ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(fsm_4_fingers
+  dynamixel_ros_library
+  ${catkin_LIBRARIES}
+)
