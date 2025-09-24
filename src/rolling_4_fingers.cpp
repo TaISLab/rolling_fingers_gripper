@@ -1,7 +1,7 @@
-#include <ros/ros.h>
-#include <std_msgs/Float32.h>
-#include <std_msgs/Int16.h>
-#include <dynamixel_ros.h>
+#include <rclcpp/rclcpp.hpp>
+#include <std_msgs/msg/float32.hpp>
+#include <std_msgs/msg/int16.hpp>
+#include <dynamixel_ros2.h>
 #include <iostream>
 
 dynamixelMotor motorJ0, motorJ1, motorJ2, motorJ3, motorJ10, motorJ11, motorJ12, motorJ13;
@@ -10,17 +10,20 @@ double rotation_time;
 double rotation_duration = 4;
 double time_now;
 
-void publishMotorStatus(dynamixelMotor &motor, ros::Publisher &pos_pub, ros::Publisher &vel_pub, ros::Publisher &curr_pub)
+void publishMotorStatus(dynamixelMotor &motor,
+                        rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr &pos_pub,
+                        rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr &vel_pub,
+                        rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr &curr_pub)
 {
     // Creating MSG objects
-    std_msgs::Float32 pos_msg;
-    std_msgs::Float32 vel_msg;
-    std_msgs::Float32 curr_msg;
+    std_msgs::msg::Float32 pos_msg;
+    std_msgs::msg::Float32 vel_msg;
+    std_msgs::msg::Float32 curr_msg;
 
     // Getting params from dmxl
-    float position = (float)(motor.getPresentPosition());
-    float velocity = (float)(motor.getPresentVelocity());
-    float current = (float)(motor.getPresentCurrent());
+    float position = static_cast<float>(motor.getPresentPosition());
+    float velocity = static_cast<float>(motor.getPresentVelocity());
+    float current = static_cast<float>(motor.getPresentCurrent());
 
     // data assignation
     pos_msg.data = position;
@@ -28,18 +31,18 @@ void publishMotorStatus(dynamixelMotor &motor, ros::Publisher &pos_pub, ros::Pub
     curr_msg.data = current;
 
     // Publishing
-    pos_pub.publish(pos_msg);
-    vel_pub.publish(vel_msg);
-    curr_pub.publish(curr_msg);
+    pos_pub->publish(pos_msg);
+    vel_pub->publish(vel_msg);
+    curr_pub->publish(curr_msg);
 }
 
 // Callback when some data was published in 'pos_user_input'
-void fsmStateCallBack(const std_msgs::Int16::ConstPtr &msg)
+void fsmStateCallBack(const std_msgs::msg::Int16::SharedPtr msg)
 {
     fsm_state = msg->data;
     if (fsm_state == 5 || fsm_state == 6)
     {
-        rotation_time = ros::Time::now().toSec();
+        rotation_time = rclcpp::Clock().now().seconds();
     }
 }
 
@@ -71,9 +74,13 @@ int main(int argc, char *argv[])
 {
     // Define port, rate and protocol
     // Default values
-    char *port_name = "/dev/ttyUSB1";
+    char *port_name = const_cast<char*>("/dev/ttyUSB1");
     int baud_rate = 1000000;
-    float protocol_version = 2.0;
+    float protocol_version = 2.0f;
+
+    // ROS2 init (do this before iniComm so library logging works)
+    rclcpp::init(argc, argv);
+    auto nh = rclcpp::Node::make_shared("rolling_4_fingers");
 
     // Init communication
     dynamixelMotor::iniComm(port_name, protocol_version, baud_rate);
@@ -107,7 +114,7 @@ int main(int argc, char *argv[])
     motorJ13.setOperatingMode(dynamixelMotor::VELOCITY_CONTROL_MODE);
 
     // Set joint velocity limit
-    float MAX_VELOCITY = 45.0;
+    float MAX_VELOCITY = 45.0f;
     motorJ10.setVelLimit(MAX_VELOCITY);
     motorJ11.setVelLimit(MAX_VELOCITY);
     motorJ12.setVelLimit(MAX_VELOCITY);
@@ -134,8 +141,8 @@ int main(int argc, char *argv[])
 
     // Velocity values
     float slow_velocity = 20;
-    float normal_velocity = 30;
-    float fast_velocity = 40;
+    [[maybe_unused]] float normal_velocity = 30;
+    [[maybe_unused]] float fast_velocity = 40;
 
     // State 1: gripper open, not rotating
     motorJ0.setGoalPosition(motor0_open);
@@ -147,42 +154,39 @@ int main(int argc, char *argv[])
     motorJ12.setGoalVelocity(0);
     motorJ13.setGoalVelocity(0);
 
-    // ROS node init
-    ros::init(argc, argv, "rolling_4_fingers");
-    ros::NodeHandle nh;
-
     // Publishers and subscribers creation
-    ros::Publisher J0_pos_publisher = nh.advertise<std_msgs::Float32>("J0_position", 1);
-    ros::Publisher J0_vel_publisher = nh.advertise<std_msgs::Float32>("J0_velocity", 1);
-    ros::Publisher J0_curr_publisher = nh.advertise<std_msgs::Float32>("J0_current", 1);
-    ros::Publisher J1_pos_publisher = nh.advertise<std_msgs::Float32>("J1_position", 1);
-    ros::Publisher J1_vel_publisher = nh.advertise<std_msgs::Float32>("J1_velocity", 1);
-    ros::Publisher J1_curr_publisher = nh.advertise<std_msgs::Float32>("J1_current", 1);
-    ros::Publisher J2_pos_publisher = nh.advertise<std_msgs::Float32>("J2_position", 1);
-    ros::Publisher J2_vel_publisher = nh.advertise<std_msgs::Float32>("J2_velocity", 1);
-    ros::Publisher J2_curr_publisher = nh.advertise<std_msgs::Float32>("J2_current", 1);
-    ros::Publisher J3_pos_publisher = nh.advertise<std_msgs::Float32>("J3_position", 1);
-    ros::Publisher J3_vel_publisher = nh.advertise<std_msgs::Float32>("J3_velocity", 1);
-    ros::Publisher J3_curr_publisher = nh.advertise<std_msgs::Float32>("J3_current", 1);
-    ros::Publisher J10_pos_publisher = nh.advertise<std_msgs::Float32>("J10_position", 1);
-    ros::Publisher J10_vel_publisher = nh.advertise<std_msgs::Float32>("J10_velocity", 1);
-    ros::Publisher J10_curr_publisher = nh.advertise<std_msgs::Float32>("J10_current", 1);
-    ros::Publisher J11_pos_publisher = nh.advertise<std_msgs::Float32>("J11_position", 1);
-    ros::Publisher J11_vel_publisher = nh.advertise<std_msgs::Float32>("J11_velocity", 1);
-    ros::Publisher J11_curr_publisher = nh.advertise<std_msgs::Float32>("J11_current", 1);
-    ros::Publisher J12_pos_publisher = nh.advertise<std_msgs::Float32>("J12_position", 1);
-    ros::Publisher J12_vel_publisher = nh.advertise<std_msgs::Float32>("J12_velocity", 1);
-    ros::Publisher J12_curr_publisher = nh.advertise<std_msgs::Float32>("J12_current", 1);
-    ros::Publisher J13_pos_publisher = nh.advertise<std_msgs::Float32>("J13_position", 1);
-    ros::Publisher J13_vel_publisher = nh.advertise<std_msgs::Float32>("J13_velocity", 1);
-    ros::Publisher J13_curr_publisher = nh.advertise<std_msgs::Float32>("J13_current", 1);
+    auto J0_pos_publisher = nh->create_publisher<std_msgs::msg::Float32>("J0_position", rclcpp::QoS(1));
+    auto J0_vel_publisher = nh->create_publisher<std_msgs::msg::Float32>("J0_velocity", rclcpp::QoS(1));
+    auto J0_curr_publisher = nh->create_publisher<std_msgs::msg::Float32>("J0_current", rclcpp::QoS(1));
+    auto J1_pos_publisher = nh->create_publisher<std_msgs::msg::Float32>("J1_position", rclcpp::QoS(1));
+    auto J1_vel_publisher = nh->create_publisher<std_msgs::msg::Float32>("J1_velocity", rclcpp::QoS(1));
+    auto J1_curr_publisher = nh->create_publisher<std_msgs::msg::Float32>("J1_current", rclcpp::QoS(1));
+    auto J2_pos_publisher = nh->create_publisher<std_msgs::msg::Float32>("J2_position", rclcpp::QoS(1));
+    auto J2_vel_publisher = nh->create_publisher<std_msgs::msg::Float32>("J2_velocity", rclcpp::QoS(1));
+    auto J2_curr_publisher = nh->create_publisher<std_msgs::msg::Float32>("J2_current", rclcpp::QoS(1));
+    auto J3_pos_publisher = nh->create_publisher<std_msgs::msg::Float32>("J3_position", rclcpp::QoS(1));
+    auto J3_vel_publisher = nh->create_publisher<std_msgs::msg::Float32>("J3_velocity", rclcpp::QoS(1));
+    auto J3_curr_publisher = nh->create_publisher<std_msgs::msg::Float32>("J3_current", rclcpp::QoS(1));
+    auto J10_pos_publisher = nh->create_publisher<std_msgs::msg::Float32>("J10_position", rclcpp::QoS(1));
+    auto J10_vel_publisher = nh->create_publisher<std_msgs::msg::Float32>("J10_velocity", rclcpp::QoS(1));
+    auto J10_curr_publisher = nh->create_publisher<std_msgs::msg::Float32>("J10_current", rclcpp::QoS(1));
+    auto J11_pos_publisher = nh->create_publisher<std_msgs::msg::Float32>("J11_position", rclcpp::QoS(1));
+    auto J11_vel_publisher = nh->create_publisher<std_msgs::msg::Float32>("J11_velocity", rclcpp::QoS(1));
+    auto J11_curr_publisher = nh->create_publisher<std_msgs::msg::Float32>("J11_current", rclcpp::QoS(1));
+    auto J12_pos_publisher = nh->create_publisher<std_msgs::msg::Float32>("J12_position", rclcpp::QoS(1));
+    auto J12_vel_publisher = nh->create_publisher<std_msgs::msg::Float32>("J12_velocity", rclcpp::QoS(1));
+    auto J12_curr_publisher = nh->create_publisher<std_msgs::msg::Float32>("J12_current", rclcpp::QoS(1));
+    auto J13_pos_publisher = nh->create_publisher<std_msgs::msg::Float32>("J13_position", rclcpp::QoS(1));
+    auto J13_vel_publisher = nh->create_publisher<std_msgs::msg::Float32>("J13_velocity", rclcpp::QoS(1));
+    auto J13_curr_publisher = nh->create_publisher<std_msgs::msg::Float32>("J13_current", rclcpp::QoS(1));
 
-    ros::Subscriber fsm_state_subscriber = nh.subscribe("fsm_state_4fingers", 1, fsmStateCallBack);
+    auto fsm_state_subscriber = nh->create_subscription<std_msgs::msg::Int16>(
+        "fsm_state_4fingers", rclcpp::QoS(1), fsmStateCallBack);
 
-    // ROS freq = 100 Hz
-    ros::Rate loop_rate(300);
+    // ROS freq = 300 Hz
+    rclcpp::Rate loop_rate(300);
 
-    while (ros::ok())
+    while (rclcpp::ok())
     {
 
         switch (fsm_state)
@@ -224,7 +228,7 @@ int main(int argc, char *argv[])
             break;
         case 5:
             // State 5: Rotate left and right
-            time_now = ros::Time::now().toSec();
+            time_now = rclcpp::Clock().now().seconds();
             if (time_now - rotation_time < rotation_duration / 2)
             {
                 motorJ10.setGoalVelocity(slow_velocity);
@@ -241,12 +245,12 @@ int main(int argc, char *argv[])
             }
             else
             {
-                rotation_time = ros::Time::now().toSec();
+                rotation_time = rclcpp::Clock().now().seconds();
             }
             break;
         case 6:
             // State 6: Ball rotation
-            time_now = ros::Time::now().toSec();
+            time_now = rclcpp::Clock().now().seconds();
             if (time_now - rotation_time < rotation_duration / 2)
             {
                 motorJ10.setGoalVelocity(slow_velocity);
@@ -263,15 +267,15 @@ int main(int argc, char *argv[])
             }
             else
             {
-                rotation_time = ros::Time::now().toSec();
+                rotation_time = rclcpp::Clock().now().seconds();
             }
             break;
         }
-        ROS_INFO("FSM state is: %d", fsm_state);
+        RCLCPP_INFO(nh->get_logger(), "FSM state is: %d", fsm_state);
 
         if (fsm_state == 7)
         {
-            ROS_INFO("Switching off and exiting...");
+            RCLCPP_INFO(nh->get_logger(), "Switching off and exiting...");
             torqueDisabled();
             break;
         }
@@ -285,9 +289,10 @@ int main(int argc, char *argv[])
         publishMotorStatus(motorJ12, J12_pos_publisher, J12_vel_publisher, J12_curr_publisher);
         publishMotorStatus(motorJ13, J13_pos_publisher, J13_vel_publisher, J13_curr_publisher);
 
-        ros::spinOnce();
+        rclcpp::spin_some(nh);
         loop_rate.sleep();
     }
 
+    rclcpp::shutdown();
     return 0;
 }

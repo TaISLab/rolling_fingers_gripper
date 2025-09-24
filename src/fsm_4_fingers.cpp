@@ -1,17 +1,19 @@
-#include <ros/ros.h>
-#include <std_msgs/Int16.h>
+#include <rclcpp/rclcpp.hpp>
+#include <std_msgs/msg/int16.hpp>
 #include <iostream>
+#include <thread>
+#include <chrono>
 
-void publishFSMState(int &state, ros::Publisher &fsm_pub)
+void publishFSMState(int &state, rclcpp::Publisher<std_msgs::msg::Int16>::SharedPtr &fsm_pub)
 {
     // Creating MSG objects
-    std_msgs::Int16 fsm_state;
+    std_msgs::msg::Int16 fsm_state;
 
     // data assignation
     fsm_state.data = state;
 
     // Publishing
-    fsm_pub.publish(fsm_state);
+    fsm_pub->publish(fsm_state);
 }
 
 int main(int argc, char *argv[])
@@ -19,17 +21,17 @@ int main(int argc, char *argv[])
     int state;
     int prev_state = 0;
 
-    // ROS node init
-    ros::init(argc, argv, "fsm_4_fingers_node");
-    ros::NodeHandle nh;
+    // ROS2 node init
+    rclcpp::init(argc, argv);
+    auto nh = rclcpp::Node::make_shared("fsm_4_fingers_node");
 
     // Publishers and subscribers creation
-    ros::Publisher fsm_state_publisher = nh.advertise<std_msgs::Int16>("fsm_state_4fingers", 1);
+    auto fsm_state_publisher = nh->create_publisher<std_msgs::msg::Int16>("fsm_state_4fingers", 1);
 
     // ROS freq = 1000 Hz
-    ros::Rate loop_rate(1000);
+    rclcpp::Rate loop_rate(1000);
 
-    while (ros::ok())
+    while (rclcpp::ok())
     {
         // Wait for user to hit a key
         printf("Select the next state:\n");
@@ -54,7 +56,7 @@ int main(int argc, char *argv[])
                 publishFSMState(state, fsm_state_publisher);
                 if (state == 7)
                 {
-                    ros::Duration(0.5).sleep(); // wait for exiting
+                    std::this_thread::sleep_for(std::chrono::milliseconds(500)); // wait for exiting
                     break;
                 }
             }
@@ -62,9 +64,10 @@ int main(int argc, char *argv[])
             prev_state = state;
         }
 
-        ros::spinOnce();
+        rclcpp::spin_some(nh);
         loop_rate.sleep();
     }
 
+    rclcpp::shutdown();
     return 0;
 }
