@@ -1,6 +1,6 @@
 # rolling_fingers_gripper
 
-Control nodes and examples for the Rolling Fingers gripper (3- and 4-finger variants). The nodes use the local wrapper library `dynamixel_ros2` which in turn uses the Dynamixel SDK.
+Control nodes and examples for the Rolling Fingers gripper (3- and 4-finger variants). The nodes use the local wrapper library `dynamixel_ros2` which in turn uses the [Dynamixel SDK](https://emanual.robotis.com/docs/en/software/dynamixel/dynamixel_sdk/overview/).
 
 This README explains required dependencies, how to build the package in a workspace, and how to run the example nodes.
 
